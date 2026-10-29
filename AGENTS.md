@@ -145,3 +145,18 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+## Integra Health project context
+
+- Single-user local health-tracking app: Laravel 13 + Filament 5 + SQLite. No login and no `user_id` columns; the Filament panel is mounted at `/` via `->path('')`.
+- Official flow: `composer run setup` (install, env, migrate, seed, assets) and `composer run health` (dev server).
+- `HealthMetricsService` is the only source of metric calculations. Never duplicate metric math in widgets, pages, or tests—call the service.
+- `HealthSetting::current()` returns (and lazily creates) the singleton row of goals: water, fruit/veg portions, active pauses, exercise weekly minutes and days.
+- Food catalog is seeded by `FoodSeeder` from `database/seeders/data/foods.php`. Only foods with `counts_toward_goal = true` count toward the fruit/veg goal.
+- Water intakes: all types count toward volume (including mineral); notes are optional.
+- Exercise: weekly minutes and weekly active days are separate metrics; the week starts on Monday.
+- Timezone comes from `APP_TIMEZONE` / `config('app.timezone')` only—never store the timezone in the database.
+- Shared Filament concerns in `app/Filament/Concerns`: `HasHealthRefresh` (widget refresh via `health-data-updated`), `HasRangeFilter` (7/30/90-day chart range), `HasInlineFoodCreation` (Select create-option for foods).
+- Testing: PHPUnit; run `php artisan test --compact`. Never use `actingAs()` (there is no auth)—test as guest. Tests use SQLite `:memory:`.
+- Git: this is a public repository. Never commit `.env`, SQLite database files, `vendor/`, `node_modules/`, or `public/build`.
+- For domain work, activate the skills `integra-health-architecture`, `health-tracking-domain`, and `food-portion-catalog`.
