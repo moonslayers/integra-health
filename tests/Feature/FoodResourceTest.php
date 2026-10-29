@@ -28,6 +28,23 @@ class FoodResourceTest extends TestCase
             ->assertOk();
     }
 
+    public function test_counts_toward_goal_toggle_appears_before_portions_per_serving(): void
+    {
+        $page = Livewire::test(CreateFood::class)
+            ->fillForm(['counts_toward_goal' => true]);
+
+        $names = collect($page->instance()->form->getComponents())
+            ->map(fn ($component) => $component->getName())
+            ->all();
+
+        $toggleIndex = array_search('counts_toward_goal', $names, true);
+        $portionsIndex = array_search('portions_per_serving', $names, true);
+
+        $this->assertNotFalse($toggleIndex);
+        $this->assertNotFalse($portionsIndex);
+        $this->assertLessThan($portionsIndex, $toggleIndex);
+    }
+
     public function test_can_create_food(): void
     {
         Livewire::test(CreateFood::class)

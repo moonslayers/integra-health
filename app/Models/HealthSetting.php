@@ -38,13 +38,8 @@ class HealthSetting extends Model
 
     public static function current(): self
     {
-        $instance = static::query()->first();
+        $instance = static::query()->firstOrCreate([]);
 
-        if ($instance === null) {
-            $instance = static::query()->create([]);
-            $instance->refresh();
-        }
-
-        return $instance;
+        return $instance->wasRecentlyCreated ? $instance->refresh() : $instance;
     }
 }

@@ -44,6 +44,10 @@ class FoodForm
                     ->label('Unidad de servicio')
                     ->options(ServingUnit::class)
                     ->required(),
+                Toggle::make('counts_toward_goal')
+                    ->label('Cuenta para la meta')
+                    ->default(false)
+                    ->live(),
                 TextInput::make('portions_per_serving')
                     ->label('Porciones por unidad')
                     ->numeric()
@@ -51,10 +55,6 @@ class FoodForm
                     ->step(0.01)
                     ->visible(fn (Get $get): bool => (bool) $get('counts_toward_goal'))
                     ->required(fn (Get $get): bool => (bool) $get('counts_toward_goal')),
-                Toggle::make('counts_toward_goal')
-                    ->label('Cuenta para la meta')
-                    ->default(false)
-                    ->live(),
                 TextInput::make('source')
                     ->label('Fuente')
                     ->maxLength(255),

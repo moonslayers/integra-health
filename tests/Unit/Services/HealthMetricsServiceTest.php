@@ -228,4 +228,37 @@ class HealthMetricsServiceTest extends TestCase
         $this->assertSame(100, $series[$day->toDateString()]['water_volume_ml']);
         $this->assertSame(200, $series[$next->toDateString()]['water_volume_ml']);
     }
+
+    public function test_daily_series_groups_by_local_day_at_tijuana_boundary(): void
+    {
+        $originalTimezone = config('app.timezone');
+        config(['app.timezone' => 'America/Tijuana']);
+        Carbon::setTestNow(Carbon::parse('2026-10-29 12:00:00', 'America/Tijuana'));
+
+        $tz = 'America/Tijuana';
+
+        WaterIntake::factory()->create([
+            'volume_ml' => 100,
+            'consumed_at' => Carbon::parse('2026-10-29 23:30:00', $tz),
+        ]);
+        WaterIntake::factory()->create([
+            'volume_ml' => 200,
+            'consumed_at' => Carbon::parse('2026-10-30 00:30:00', $tz),
+        ]);
+        ActivePause::factory()->create([
+            'minutes' => 5,
+            'performed_at' => Carbon::parse('2026-10-29 23:30:00', $tz),
+        ]);
+
+        $series = $this->service->dailySeries('2026-10-29', '2026-10-30');
+
+        $this->assertSame(100, $series['2026-10-29']['water_volume_ml']);
+        $this->assertSame(1, $series['2026-10-29']['water_count']);
+        $this->assertSame(200, $series['2026-10-30']['water_volume_ml']);
+        $this->assertSame(1, $series['2026-10-30']['water_count']);
+        $this->assertSame(5, $series['2026-10-29']['pauses_minutes']);
+        $this->assertSame(0, $series['2026-10-30']['pauses_minutes']);
+
+        config(['app.timezone' => $originalTimezone]);
+    }
 }

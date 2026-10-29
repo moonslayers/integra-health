@@ -108,9 +108,23 @@ class HealthMetricsService
 
     public function goalProgress(Carbon|string|null $date = null): array
     {
-        $settings = HealthSetting::current();
         $today = $this->todaySummary($date);
-        [$weekStart, $weekEnd] = $this->weekBounds($date);
+
+        return $this->buildGoalProgress($today, $date);
+    }
+
+    public function dashboardSummary(Carbon|string|null $date = null): array
+    {
+        $today = $this->todaySummary($date);
+        $progress = $this->buildGoalProgress($today, $date);
+        $progress['today'] = $today;
+
+        return $progress;
+    }
+
+    protected function buildGoalProgress(array $today, Carbon|string|null $date = null): array
+    {
+        $settings = HealthSetting::current();
         $exercise = $this->weeklyExerciseSummary($date);
 
         $waterCurrent = $today['water_total_ml'];

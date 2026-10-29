@@ -15,35 +15,34 @@ class HealthStatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $service = app(HealthMetricsService::class);
-        $today = $service->todaySummary();
-        $progress = $service->goalProgress();
-        $exercise = $progress['exercise'];
+        $summary = app(HealthMetricsService::class)->dashboardSummary();
+        $today = $summary['today'];
+        $exercise = $summary['exercise'];
 
         $waterCurrent = (int) $today['water_total_ml'];
-        $waterGoal = (int) $progress['water']['goal'];
-        $waterPct = (float) $progress['water']['percentage'];
+        $waterGoal = (int) $summary['water']['goal'];
 
         $portionsCurrent = (float) $today['fruit_veg_portions'];
-        $portionsGoal = (float) $progress['portions']['goal'];
+        $portionsGoal = (float) $summary['portions']['goal'];
+        $portionsPct = (float) $summary['portions']['percentage'];
 
         $pausesCurrent = (int) $today['pauses_count'];
-        $pausesGoal = (int) $progress['pauses']['goal'];
+        $pausesGoal = (int) $summary['pauses']['goal'];
         $pausesMinutes = (int) $today['pauses_minutes'];
 
         return [
             Stat::make('Agua de hoy', sprintf('%d / %d ml', $waterCurrent, $waterGoal))
                 ->description(sprintf('%d registros', (int) $today['water_count']))
                 ->descriptionIcon('heroicon-m-beaker')
-                ->color($progress['water']['met'] ? 'success' : 'warning'),
+                ->color($summary['water']['met'] ? 'success' : 'warning'),
             Stat::make('Porciones frutas/verduras', sprintf('%.1f / %.1f', $portionsCurrent, $portionsGoal))
-                ->description(sprintf('%.0f%% de la meta', $portionsGoal > 0 ? ($portionsCurrent / $portionsGoal) * 100 : 0))
+                ->description(sprintf('%.0f%% de la meta', $portionsPct))
                 ->descriptionIcon('heroicon-m-sparkles')
-                ->color($progress['portions']['met'] ? 'success' : 'warning'),
+                ->color($summary['portions']['met'] ? 'success' : 'warning'),
             Stat::make('Pausas activas', sprintf('%d / %d', $pausesCurrent, $pausesGoal))
                 ->description(sprintf('%d minutos totales', $pausesMinutes))
                 ->descriptionIcon('heroicon-m-pause-circle')
-                ->color($progress['pauses']['met'] ? 'success' : 'warning'),
+                ->color($summary['pauses']['met'] ? 'success' : 'warning'),
             Stat::make('Ejercicio (minutos)', sprintf('%d / %d min', (int) $exercise['minutes'], (int) $exercise['minutes_goal']))
                 ->description(sprintf('%.0f%% de la meta semanal', (float) $exercise['minutes_percentage']))
                 ->descriptionIcon('heroicon-m-bolt')
