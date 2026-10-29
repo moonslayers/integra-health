@@ -29,6 +29,10 @@ class ExerciseSessionsTable
                     ->label('Fecha y hora')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('notes')
+                    ->label('Notas')
+                    ->toggleable()
+                    ->limit(40),
             ])
             ->filters([
                 SelectFilter::make('type')
