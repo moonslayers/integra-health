@@ -28,8 +28,9 @@ database/seeders/FoodSeeder.php        updateOrCreate por slug (idempotente)
 database/migrations/2026_10_29_100003_create_foods_table.php
 app/Models/Food.php                    name, slug (unique), category, serving_unit,
                                        portions_per_serving, counts_toward_goal, source, notes
+                                       + helpers de unidad según quantity
 app/Enums/FoodCategory.php             fruit, vegetable, legume, protein, grain, dairy, other
-app/Enums/ServingUnit.php              piece, cup, portion, gram
+app/Enums/ServingUnit.php              piece, cup, portion, gram + etiquetas singular/plural
 app/Filament/Concerns/HasInlineFoodCreation.php
 app/Filament/Resources/Food/Schemas/FoodForm.php          alta/edit por pantalla
 app/Filament/Resources/FoodEntries/Schemas/FoodEntryForm.php  usa el Select con inline
@@ -65,6 +66,17 @@ tests/Feature/FoodSeederTest.php       idempotencia + ejemplos autoritativos
 - Porciones de un registro: `quantity × portions_per_serving`
   (ver skill `health-tracking-domain`).
 
+## Presentación de unidades
+
+- `quantity` es el número de unidades de servicio (`serving_unit`) del alimento
+  elegido, no un conteo genérico.
+- La unidad se muestra junto a la cantidad: singular solo cuando la cantidad es
+  exactamente 1, plural en cualquier otro caso.
+- Valores con decimales como `"1.50"` deben renderizar sin ceros sobrantes
+  (`1.5 tazas`).
+- Las opciones del selector de alimentos pueden mostrar el nombre del alimento
+  más su unidad (p. ej. "Manzana roja (pieza)").
+
 ## Alta inline (`HasInlineFoodCreation`)
 
 - Trait en `app/Filament/Concerns/HasInlineFoodCreation.php`; lo usan
@@ -88,6 +100,8 @@ tests/Feature/FoodSeederTest.php       idempotencia + ejemplos autoritativos
 - Validar `portions_per_serving` (obligatorio y > 0) cuando
   `counts_toward_goal = true`, en seeder y en formularios.
 - No recalcular porciones en recursos/widgets aparte del accessor/servicio.
+- Nunca duplicar el mapeo de etiquetas/plurales de unidades en formularios,
+  tablas o acciones del Dashboard: llamar los helpers de `Food`/`ServingUnit`.
 
 ## Relación con otras skills
 

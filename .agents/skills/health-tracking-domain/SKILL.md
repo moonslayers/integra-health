@@ -27,7 +27,7 @@ app/Services/HealthMetricsService.php      fuente canónica de cálculos
 app/Models/HealthSetting.php               metas (HealthSetting::current())
 app/Models/WaterIntake.php                 type, volume_ml, consumed_at, notes
 app/Models/ActivePause.php                 minutes, type, performed_at
-app/Models/FoodEntry.php                   quantity, consumed_at + accessor portions
+app/Models/FoodEntry.php                   quantity, consumed_at, notes + accessor portions
 app/Models/Food.php                        portions_per_serving, counts_toward_goal
 app/Models/ExerciseSession.php             minutes, type, performed_at, notes
 app/Enums/WaterType.php | PauseType.php | ExerciseType.php | FoodCategory.php
@@ -81,6 +81,15 @@ por el servicio.
   lácteos y otros **no suman** aunque tengan `portions_per_serving`.
 - Meta default: `fruit_veg_goal_portions = 1` porción/día.
 - El resumen filtra con join a `foods` y `foods.counts_toward_goal = true`.
+- Cada registro admite `notes` opcional (una nota por alimento registrado): se
+  captura en el resource FoodEntries y en la acción `registrarAlimento` del
+  Dashboard, se guarda en `food_entries.notes` y se muestra en la tabla de
+  FoodEntries.
+- `quantity` se expresa en la `serving_unit` del alimento. El texto de unidad
+  que ve el usuario se centraliza en `ServingUnit::getPluralLabel()`,
+  `Food::unitLabelForQuantity()`, `Food::quantityWithUnit()` y
+  `Food::nameWithUnit()`: es solo presentación, la matemática de porciones
+  sigue siendo `quantity × portions_per_serving`.
 
 ### Ejercicio
 - Dos metas **separadas**: minutos semanales (`exercise_weekly_minutes_goal`,
@@ -110,6 +119,9 @@ por el servicio.
 - No duplicar queries de resumen en widgets; usar `dashboardSummary`/`dailySeries`.
 - No fusionar las metas de ejercicio (minutos ≠ días).
 - No editar migraciones ya aplicadas para "arreglar" defaults.
+- No reimplementar etiquetas/plurales de unidades ni el manejo de `notes` por
+  registro en widgets, resources o acciones del Dashboard: usar los helpers del
+  modelo y el campo de notas existente.
 
 ## Relación con otras skills
 
