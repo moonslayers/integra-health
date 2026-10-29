@@ -144,9 +144,10 @@ Action::make('updateEmail')
 
 ## Testing
 
-Testing setup (requires `pestphp/pest-plugin-livewire` in `composer.json`):
+Testing setup — this repo uses **PHPUnit**, not Pest (`php artisan make:test --phpunit`). The Pest-style examples below are generic/illustrative; in this repo translate them to PHPUnit with Livewire testing helpers. If a project uses Pest, then it requires `pestphp/pest-plugin-livewire` in `composer.json`:
 
 - Always call `$this->actingAs(User::factory()->create())` before testing panel functionality.
+- **Exception — guest panels:** if the panel has no authentication (no `Authenticate` middleware, mounted at `/`), never call `actingAs()`. Test HTTP responses and Livewire components as a guest.
 - For edit pages, pass `['record' => $user->id]` and use `->call('save')` (not `->call('create')`). Edit pages do not redirect after saving by default, so only assert a redirect when one is configured or `getRedirectUrl()` is overridden.
 
 ### Table test
@@ -215,6 +216,18 @@ livewire(CreateUser::class)
 
 Use `->callAction(DeleteAction::class)` for page actions, or `->callAction(TestAction::make('name')->table($record))` for table actions:
 
+### Guest panel test
+
+```php
+// No actingAs() — the panel is public.
+$response = $this->get('/');
+
+$response->assertStatus(200);
+
+livewire(Dashboard::class)
+    ->assertSuccessful();
+```
+
 ### Calling actions
 
 ```php
@@ -249,3 +262,137 @@ livewire(ListUsers::class)
   - `$navigationIcon`: `protected static string | BackedEnum | null` (not `?string`)
   - `$navigationGroup`: `protected static string | UnitEnum | null` (not `?string`)
   - `$view`: `protected string` (not `protected static string`) on `Page` and `Widget` classes
+
+## Guest panels (root path)
+
+Mount a panel at `/` with `->path('')`. A guest (unauthenticated) panel must not include auth plumbing:
+
+- Omit `->login()`, `->authGuard()`, `->profile()`, and the `Authenticate` / `AuthenticateSession` middleware. If there is no auth at all, `AuthenticateSession` must not remain in the middleware stack.
+- Do not register `AccountWidget` (or any auth-dependent widget).
+
+`->pages([])` combined with `->discoverPages()` registers pages only via discovery, so Filament does not also inject its stock Dashboard next to a custom one:
+
+```php
+return $panel
+    ->default()
+    ->id('admin')
+    ->path('')
+    ->brandName('Integra Health')
+    ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+    ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+    ->pages([])
+    ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+    ->middleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        PreventRequestForgery::class,
+        SubstituteBindings::class,
+        DisableBladeIconComponents::class,
+        DispatchServingFilamentEvent::class,
+    ]);
+```
+
+Verify the setup: `GET /` must return `200`, and `GET /login` must return `404` (no login route registered).
+
+## Chart widgets with filters
+
+For structured filters on a `ChartWidget`, use `Filament\Widgets\ChartWidget\Concerns\HasFiltersSchema`. Define the filter form in `filtersSchema()` and read values from `$this->filters` (a live array keyed by field name). Changing a live filter clears the widget's cached chart data automatically:
+
+```php
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Schema;
+use Filament\Widgets\ChartWidget;
+use Filament\Widgets\ChartWidget\Concerns\HasFiltersSchema;
+
+class IntakeChart extends ChartWidget
+{
+    use HasFiltersSchema;
+
+    protected function filtersSchema(Schema $schema): Schema
+    {
+        return $schema->components([
+            Select::make('range')
+                ->options([
+                    '7' => '7 días',
+                    '30' => '30 días',
+                    '90' => '90 días',
+                ])
+                ->default('30')
+                ->live(),
+        ]);
+    }
+
+    protected function getData(): array
+    {
+        $days = (int) ($this->filters['range'] ?? 30);
+
+        // build chart payload from $days
+    }
+}
+```
+
+Always provide a `->default()` for the range so `$this->filters` is never empty on first render.
+
+## Inline create option on `Select`
+
+Let users create a related record from the Select modal with `createOptionForm()` + `createOptionUsing()`. `createOptionUsing()` must return the new record's key so Filament selects the created option immediately:
+
+```php
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Str;
+
+Select::make('food_id')
+    ->relationship('food', 'name')
+    ->createOptionModalHeading('Crear alimento')
+    ->createOptionForm([
+        TextInput::make('name')->required(),
+    ])
+    ->createOptionUsing(function (array $data): int {
+        $slug = Str::slug($data['name']) ?: 'registro';
+        $base = $slug;
+        $suffix = 2;
+
+        while (Food::query()->where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$suffix}";
+            $suffix++;
+        }
+
+        return Food::create([
+            'name' => $data['name'],
+            'slug' => $slug,
+        ])->getKey();
+    });
+```
+
+Generate unique slugs (or other natural keys) inside `createOptionUsing()`, not in the form.
+
+## Widget refresh on data changes
+
+Dispatch a Livewire event after a mutation, and listen for it on every widget that renders affected data. An empty listener body is intentional: Livewire re-renders the component when the event arrives. Put the attribute and empty method in a shared trait so widgets do not duplicate the listener:
+
+```php
+// app/Filament/Concerns/HasHealthRefresh.php
+use Livewire\Attributes\On;
+
+trait HasHealthRefresh
+{
+    #[On('health-data-updated')]
+    public function refreshData(): void {}
+}
+```
+
+```php
+class WaterVolumeChart extends ChartWidget
+{
+    use HasHealthRefresh;
+    // ...
+}
+```
+
+```php
+// In the page/action that mutates data:
+$this->dispatch('health-data-updated');
+```
