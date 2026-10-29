@@ -98,4 +98,13 @@ class ExerciseSessionResourceTest extends TestCase
         Livewire::test(ListExerciseSessions::class)
             ->assertCanSeeTableRecords($sessions);
     }
+
+    public function test_list_shows_notes_when_present(): void
+    {
+        $session = ExerciseSession::factory()->create(['notes' => 'Caminata en el parque']);
+
+        Livewire::test(ListExerciseSessions::class)
+            ->assertCanSeeTableRecords([$session])
+            ->assertSee('Caminata en el parque');
+    }
 }

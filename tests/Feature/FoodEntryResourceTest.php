@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\FoodCategory;
 use App\Enums\ServingUnit;
 use App\Filament\Resources\FoodEntries\Pages\CreateFoodEntry;
+use App\Filament\Resources\FoodEntries\Pages\EditFoodEntry;
 use App\Filament\Resources\FoodEntries\Pages\ListFoodEntries;
 use App\Models\Food;
 use App\Models\FoodEntry;
@@ -155,5 +156,97 @@ class FoodEntryResourceTest extends TestCase
             ->assertHasFormErrors(['portions_per_serving']);
 
         $this->assertDatabaseMissing('foods', ['name' => 'Pera']);
+    }
+
+    public function test_guest_can_create_food_entry_with_notes_visible_in_list(): void
+    {
+        $food = Food::factory()->create();
+        $notes = 'Media porción para el almuerzo';
+
+        Livewire::test(CreateFoodEntry::class)
+            ->fillForm([
+                'food_id' => $food->id,
+                'quantity' => 1,
+                'consumed_at' => now()->format('Y-m-d H:i:s'),
+                'notes' => $notes,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors()
+            ->assertNotified();
+
+        $this->assertDatabaseHas('food_entries', [
+            'food_id' => $food->id,
+            'notes' => $notes,
+        ]);
+
+        $entry = FoodEntry::latest('id')->first();
+        $this->assertNotNull($entry);
+
+        Livewire::test(ListFoodEntries::class)
+            ->assertCanSeeTableRecords(collect([$entry]))
+            ->assertSee($notes);
+    }
+
+    public function test_guest_can_edit_food_entry_notes(): void
+    {
+        $food = Food::factory()->create();
+        $entry = FoodEntry::factory()->create([
+            'food_id' => $food->id,
+            'notes' => 'Nota inicial',
+        ]);
+        $updatedNotes = 'Nota actualizada desde la edición';
+
+        Livewire::test(EditFoodEntry::class, ['record' => $entry->id])
+            ->fillForm([
+                'food_id' => $food->id,
+                'quantity' => 1,
+                'consumed_at' => $entry->consumed_at->format('Y-m-d H:i:s'),
+                'notes' => $updatedNotes,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('food_entries', [
+            'id' => $entry->id,
+            'notes' => $updatedNotes,
+        ]);
+
+        Livewire::test(ListFoodEntries::class)
+            ->assertCanSeeTableRecords(collect([$entry->refresh()]))
+            ->assertSee($updatedNotes);
+    }
+
+    public function test_list_renders_quantity_with_the_food_unit(): void
+    {
+        $food = Food::factory()->create([
+            'name' => 'Avena',
+            'serving_unit' => ServingUnit::Cup,
+        ]);
+
+        $entry = FoodEntry::factory()->create([
+            'food_id' => $food->id,
+            'quantity' => 1.5,
+        ]);
+
+        Livewire::test(ListFoodEntries::class)
+            ->assertCanSeeTableRecords(collect([$entry]))
+            ->assertSee('1.5 tazas');
+    }
+
+    public function test_form_exposes_notes_field_and_shows_unit_for_selected_food(): void
+    {
+        $food = Food::factory()->create([
+            'name' => 'Avena',
+            'serving_unit' => ServingUnit::Cup,
+        ]);
+
+        Livewire::test(CreateFoodEntry::class)
+            ->assertFormFieldExists('notes')
+            ->assertDontSee('tazas')
+            ->fillForm([
+                'food_id' => $food->id,
+                'quantity' => 1.5,
+            ])
+            ->assertSee('tazas');
     }
 }

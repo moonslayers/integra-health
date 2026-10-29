@@ -175,6 +175,44 @@ class DashboardQuickActionsTest extends TestCase
             ->assertNotNotified();
     }
 
+    public function test_food_action_creates_entry_with_notes(): void
+    {
+        $food = Food::factory()->create();
+        $notes = 'Porción de la media tarde';
+
+        Livewire::test(Dashboard::class)
+            ->callAction('registrarAlimento', data: [
+                'food_id' => $food->id,
+                'quantity' => 2,
+                'consumed_at' => now()->format('Y-m-d H:i:s'),
+                'notes' => $notes,
+            ])
+            ->assertNotified()
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('food_entries', [
+            'food_id' => $food->id,
+            'notes' => $notes,
+        ]);
+    }
+
+    public function test_food_action_quantity_shows_unit_of_selected_food(): void
+    {
+        $food = Food::factory()->create([
+            'name' => 'Avena',
+            'serving_unit' => ServingUnit::Cup,
+        ]);
+
+        Livewire::test(Dashboard::class)
+            ->mountAction('registrarAlimento')
+            ->assertMountedActionModalDontSee('tazas')
+            ->fillForm([
+                'food_id' => $food->id,
+                'quantity' => 1.5,
+            ])
+            ->assertMountedActionModalSee('tazas');
+    }
+
     public function test_food_action_can_create_food_inline_and_register_entry(): void
     {
         $component = Livewire::test(Dashboard::class)
