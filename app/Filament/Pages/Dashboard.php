@@ -29,6 +29,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 
 class Dashboard extends BaseDashboard
@@ -146,8 +147,13 @@ class Dashboard extends BaseDashboard
                 static::applyInlineFoodCreation(
                     Select::make('food_id')
                         ->label('Alimento')
-                        ->options(fn (): array => Food::query()->orderBy('name')->pluck('name', 'id')->toArray())
+                        ->options(fn (): array => Food::query()
+                            ->orderBy('name')
+                            ->get()
+                            ->mapWithKeys(fn (Food $food): array => [$food->getKey() => $food->nameWithUnit()])
+                            ->toArray())
                         ->searchable()
+                        ->live()
                         ->required()
                 ),
                 TextInput::make('quantity')
@@ -156,17 +162,22 @@ class Dashboard extends BaseDashboard
                     ->minValue(0.01)
                     ->step(0.01)
                     ->default(1)
+                    ->live()
+                    ->suffix(fn (Get $get): ?string => $this->quantityUnitSuffix($get))
                     ->required(),
                 DateTimePicker::make('consumed_at')
                     ->label('Fecha y hora')
                     ->default(now())
                     ->required(),
+                Textarea::make('notes')
+                    ->label('Notas'),
             ])
             ->action(function (array $data): void {
                 $entry = FoodEntry::create([
                     'food_id' => (int) $data['food_id'],
                     'quantity' => $data['quantity'],
                     'consumed_at' => $data['consumed_at'],
+                    'notes' => $data['notes'] ?? null,
                 ]);
 
                 $portions = app(HealthMetricsService::class)->portionsForFoodEntry($entry);
@@ -179,6 +190,28 @@ class Dashboard extends BaseDashboard
 
                 $this->dispatch('health-data-updated');
             });
+    }
+
+    private function quantityUnitSuffix(Get $get): ?string
+    {
+        $foodId = $get('food_id');
+
+        if (blank($foodId)) {
+            return null;
+        }
+
+        $food = Food::query()->find($foodId);
+
+        if ($food === null) {
+            return null;
+        }
+
+        $quantity = $get('quantity');
+        $quantity = filled($quantity) ? $quantity : 1;
+
+        $unitLabel = $food->unitLabelForQuantity($quantity);
+
+        return $unitLabel === '' ? null : $unitLabel;
     }
 
     protected function exerciseAction(): Action

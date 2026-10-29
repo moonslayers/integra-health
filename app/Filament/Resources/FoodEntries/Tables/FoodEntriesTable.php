@@ -29,7 +29,8 @@ class FoodEntriesTable
                     ->formatStateUsing(fn (FoodCategory $state): string => $state->getLabel()),
                 TextColumn::make('quantity')
                     ->label('Cantidad')
-                    ->numeric(2),
+                    ->state(fn (FoodEntry $record): string => $record->food?->quantityWithUnit($record->quantity)
+                        ?? (string) $record->quantity),
                 TextColumn::make('portions')
                     ->label('Porciones')
                     ->state(fn (FoodEntry $record): float => app(HealthMetricsService::class)->portionsForFoodEntry($record))
@@ -37,6 +38,11 @@ class FoodEntriesTable
                 TextColumn::make('consumed_at')
                     ->label('Fecha y hora')
                     ->dateTime(),
+                TextColumn::make('notes')
+                    ->label('Notas')
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->limit(40),
             ])
             ->filters([
                 SelectFilter::make('category')

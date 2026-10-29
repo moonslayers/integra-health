@@ -32,4 +32,53 @@ class Food extends Model
     {
         return $this->hasMany(FoodEntry::class);
     }
+
+    public function unitLabelForQuantity(string|float|int $quantity): string
+    {
+        $unit = $this->serving_unit;
+
+        if ($unit === null) {
+            return '';
+        }
+
+        $label = (float) $quantity === 1.0
+            ? $unit->getLabel()
+            : $unit->getPluralLabel();
+
+        return mb_strtolower((string) $label);
+    }
+
+    public function quantityWithUnit(string|float|int $quantity): string
+    {
+        $formattedQuantity = $this->formatQuantity($quantity);
+        $unitLabel = $this->unitLabelForQuantity($quantity);
+
+        if ($unitLabel === '') {
+            return $formattedQuantity;
+        }
+
+        return "{$formattedQuantity} {$unitLabel}";
+    }
+
+    public function nameWithUnit(): string
+    {
+        $unitLabel = $this->unitLabelForQuantity(1);
+
+        if ($unitLabel === '') {
+            return $this->name;
+        }
+
+        return "{$this->name} ({$unitLabel})";
+    }
+
+    private function formatQuantity(string|float|int $quantity): string
+    {
+        $text = (string) $quantity;
+
+        if (str_contains($text, '.')) {
+            $text = rtrim(rtrim($text, '0'), '.');
+        }
+
+        return $text;
+    }
 }

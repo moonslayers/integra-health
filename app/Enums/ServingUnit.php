@@ -21,4 +21,14 @@ enum ServingUnit: string implements HasLabel
             self::Gram => 'Gramo',
         };
     }
+
+    public function getPluralLabel(): string
+    {
+        return match ($this) {
+            self::Piece => 'Piezas',
+            self::Cup => 'Tazas',
+            self::Portion => 'Porciones',
+            self::Gram => 'Gramos',
+        };
+    }
 }
