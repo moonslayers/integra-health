@@ -184,7 +184,7 @@ class HealthMetricsService
             ->join('foods', 'foods.id', '=', 'food_entries.food_id')
             ->where('foods.counts_toward_goal', true)
             ->whereBetween('food_entries.consumed_at', [$start, $end->copy()->endOfDay()])
-            ->selectRaw('date(food_entries.consumed_at) as d, COALESCE(SUM(food_entries.quantity * COALESCE(foods.portions_per_serving, 0)), 0) as portions')
+            ->selectRaw('date(food_entries.consumed_at) as d, COALESCE(SUM(food_entries.quantity * COALESCE(foods.portions_per_serving, 0)), 0) as total_portions')
             ->groupByRaw('date(food_entries.consumed_at)')
             ->get()
             ->keyBy('d');
@@ -206,7 +206,7 @@ class HealthMetricsService
 
             $waterVolume = (int) ($w->volume ?? 0);
             $waterFreq = (int) ($w->freq ?? 0);
-            $portions = (float) ($p->portions ?? 0);
+            $portions = (float) ($p->total_portions ?? 0);
             $pausesCount = (int) ($a->c ?? 0);
             $pausesMinutes = (int) ($a->m ?? 0);
 

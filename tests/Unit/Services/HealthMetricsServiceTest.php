@@ -261,4 +261,55 @@ class HealthMetricsServiceTest extends TestCase
 
         config(['app.timezone' => $originalTimezone]);
     }
+
+    public function test_daily_series_fruit_veg_portions_returns_goal_aggregate(): void
+    {
+        $originalTimezone = config('app.timezone');
+        config(['app.timezone' => 'America/Tijuana']);
+        Carbon::setTestNow(Carbon::parse('2026-10-29 12:00:00', 'America/Tijuana'));
+
+        $tz = 'America/Tijuana';
+        $food = $this->food(['portions_per_serving' => 2]);
+        FoodEntry::factory()->create([
+            'food_id' => $food->id,
+            'quantity' => 1.5,
+            'consumed_at' => Carbon::parse('2026-10-29 09:00:00', $tz),
+        ]);
+
+        $nonGoal = Food::factory()->create(['counts_toward_goal' => false, 'portions_per_serving' => 5]);
+        FoodEntry::factory()->create([
+            'food_id' => $nonGoal->id,
+            'quantity' => 2,
+            'consumed_at' => Carbon::parse('2026-10-29 10:00:00', $tz),
+        ]);
+
+        $series = $this->service->dailySeries('2026-10-29', '2026-10-29');
+
+        $this->assertSame(3.0, $series['2026-10-29']['fruit_veg_portions']);
+
+        config(['app.timezone' => $originalTimezone]);
+    }
+
+    public function test_daily_series_fruit_veg_portions_keeps_empty_days_zero(): void
+    {
+        $originalTimezone = config('app.timezone');
+        config(['app.timezone' => 'America/Tijuana']);
+        Carbon::setTestNow(Carbon::parse('2026-10-29 12:00:00', 'America/Tijuana'));
+
+        $tz = 'America/Tijuana';
+        $food = $this->food(['portions_per_serving' => 2]);
+        FoodEntry::factory()->create([
+            'food_id' => $food->id,
+            'quantity' => 1.5,
+            'consumed_at' => Carbon::parse('2026-10-29 09:00:00', $tz),
+        ]);
+
+        $series = $this->service->dailySeries('2026-10-27', '2026-10-29');
+
+        $this->assertSame(0.0, $series['2026-10-27']['fruit_veg_portions']);
+        $this->assertSame(0.0, $series['2026-10-28']['fruit_veg_portions']);
+        $this->assertSame(3.0, $series['2026-10-29']['fruit_veg_portions']);
+
+        config(['app.timezone' => $originalTimezone]);
+    }
 }

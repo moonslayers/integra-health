@@ -124,6 +124,26 @@ class DashboardWidgetsTest extends TestCase
         $this->assertCount(30, $data['labels']);
     }
 
+    public function test_fruit_veg_portions_chart_matches_service(): void
+    {
+        $food = Food::factory()->create(['counts_toward_goal' => true, 'portions_per_serving' => 2]);
+        FoodEntry::factory()->create(['food_id' => $food->id, 'quantity' => 1.5, 'consumed_at' => now()->copy()->subDay()]);
+        FoodEntry::factory()->create(['food_id' => $food->id, 'quantity' => 1, 'consumed_at' => now()]);
+
+        $testable = Livewire::test(FruitVegPortionsChart::class);
+        $data = $this->reflect($testable->instance(), 'getData');
+
+        $service = $this->service;
+        $end = $service->todayDate();
+        $start = $end->copy()->subDays(29)->startOfDay();
+        $series = $service->dailySeries($start, $end);
+
+        $expected = array_map(fn ($d) => (float) $d['fruit_veg_portions'], array_values($series));
+        $this->assertSame($expected, $data['datasets'][0]['data']);
+        $this->assertCount(30, $data['labels']);
+        $this->assertSame(5.0, array_sum($data['datasets'][0]['data']));
+    }
+
     public function test_range_filter_changes_data(): void
     {
         WaterIntake::factory()->create(['volume_ml' => 100, 'consumed_at' => now()]);
