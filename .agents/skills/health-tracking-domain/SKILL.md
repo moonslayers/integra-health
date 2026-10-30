@@ -49,7 +49,8 @@ Inyectar con `app(HealthMetricsService::class)`. Métodos públicos:
   `percentage`, `met` más `exercise`.
 - `dashboardSummary(?Carbon|string $date): array` — `goalProgress` + clave `today`.
 - `dailySeries(string $from, string $to): array` — por día: `water_volume_ml`,
-  `water_count`, `fruit_veg_portions`, `pauses_count`, `pauses_minutes`.
+  `water_count`, `fruit_veg_portions`, `pauses_count`, `pauses_minutes`. Lee el
+  agregado de porciones con el alias `total_portions`.
 - `weeklyExerciseSummary(?Carbon|string $date): array` — minutos y días de la semana
   con sus metas/porcentajes.
 - Auxiliares: `timezone()`, `now()`, `todayDate()`.
@@ -119,6 +120,11 @@ por el servicio.
 - No duplicar queries de resumen en widgets; usar `dashboardSummary`/`dailySeries`.
 - No fusionar las metas de ejercicio (minutos ≠ días).
 - No editar migraciones ya aplicadas para "arreglar" defaults.
+- No aliasar el agregado SQL como `portions` en queries de `FoodEntry` que hidratan
+  modelos: choca con el accessor virtual `getPortionsAttribute()` y Eloquent devuelve
+  0 en filas agrupadas (rompió la gráfica diaria de porciones). Usar un alias no
+  colisionante como `total_portions`, o agregar sin hidratar (`value()`/`DB::table()`),
+  como hace `todaySummary()`.
 - No reimplementar etiquetas/plurales de unidades ni el manejo de `notes` por
   registro en widgets, resources o acciones del Dashboard: usar los helpers del
   modelo y el campo de notas existente.
